@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Counting
 {
@@ -35,6 +33,18 @@ namespace Counting
                 _logFactorial = lf;
             }
             return _logFactorial[n] - _logFactorial[k] - _logFactorial[n - k];
+        }
+
+        /// <summary>
+        /// Simple approximation to n choose k using Stirling's approximation, for large n and k.
+        /// </summary>
+        /// <param name="n">The population size</param>
+        /// <param name="k">The number of items to select</param>
+        /// <returns>An approximation to n choose k</returns>
+        public static double StirlingLogNcK(int n, int k)
+        {
+            double e = (double)k / n;
+            return -n * (e * Math.Log(e) + (1 - e) * Math.Log(1 - e));
         }
 
         /// <summary>
