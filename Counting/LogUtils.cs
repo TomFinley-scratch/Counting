@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace Counting
 {
-    class LogUtils
+    public static class LogUtils
     {
         // This array holds logarithms of factorials, so _logFactorial[i] = log(i!)
         private static double[] _logFactorial = new double[] { 0 };
@@ -23,8 +23,8 @@ namespace Counting
                 return double.NegativeInfinity;
             if (_logFactorial.Length <= n)
             {
-                // Thread safe but potentially inefficient.  Not
-                // sure which is worse, locks or this.
+                // Thread safe but potentially inefficient.
+                // Not sure which is worse, locks or this.
                 var lf = _logFactorial;
                 int start = lf.Length;
                 Array.Resize(ref lf, n + 1);

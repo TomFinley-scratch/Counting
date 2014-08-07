@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Threading;
 
 namespace Counting
 {
@@ -11,69 +7,43 @@ namespace Counting
 
     public class Counter
     {
+        // The probabilities.
         private readonly double[] _probs;
+        // The log of the probabilities.
         private readonly double[] _logProbs;
 
         public int Length { get { return _probs.Length; } }
 
-        public Counter(params double[] probs)
+        /// <summary>
+        /// Create a new counter object.
+        /// </summary>
+        /// <param name="likelihoods">The proportional likelihoods of sampling each.
+        /// These must be positive finite values.</param>
+        public Counter(params double[] likelihoods)
         {
-            if (probs == null || probs.Length == 0)
+            if (likelihoods == null || likelihoods.Length == 0)
                 throw new ArgumentException("must have some values", "probs");
-            double psum = probs.Sum();
-            _probs = probs.Select(p => p / psum).ToArray();
+            double psum = likelihoods.Sum();
+            _probs = likelihoods.Select(p => p / psum).ToArray();
             for (int i = 0; i < _probs.Length; ++i)
             {
                 if (!(_probs[i] > 0))
                 {
                     throw new ArgumentOutOfRangeException(string.Format(
-                        "Probability[{0}] = {1} normalized to non-positive number", i, probs[i]), "probs");
+                        "Probability[{0}] = {1} normalized to non-positive number", i, likelihoods[i]), "probs");
                 }
             }
             _logProbs = _probs.Select(p => Math.Log(p)).ToArray();
         }
 
-        public double LogP(BitArray b, int c)
-        {
-            int stillSet = Enumerable.Range(0, b.Length).Where(i => b[i]).Count();
-            return LogP(b, c, stillSet, 0);
-        }
-
         /// <summary>
-        /// Helper method for calculating the log probability of b given c. This function
-        /// operates recursively.
+        /// Helper method for calculating the log probability of b given c.
         /// </summary>
-        /// <param name="b">The set bit pattern.</param>
-        /// <param name="c">The generating number of values.</param>
-        /// <param name="stillSet">A convenience quantity indicating the number of set
-        /// bits in b from b[i:Length]</param>
-        /// <param name="i">The bucket this current call corresponds to</param>
-        /// <returns>The logarithm of the probability</returns>
-        private double LogP(BitArray b, int c, int stillSet, int i)
-        {
-            if (i >= Length)
-                return c == 0 ? 0 : Double.NegativeInfinity;
-            if (b[i])
-            {
-                // We will have stillSet - 1 remaining after accounting for this,
-                // so we can only have up to c - (stillSet - 1) values in this bin.
-                IEnumerable<double> values = Enumerable.Range(1, c - stillSet + 1)
-                    .Select(j => LogUtils.LogNcK(c, j) + j * _logProbs[i] + LogP(b, c - j, stillSet - 1, i + 1));
-                double[] v = values.ToArray();
-                double result = LogUtils.LogSumExp(v);
-                if (double.IsNaN(result))
-                {
-                    string msg = string.Format("Warning: LogSumExp({0}) = {1} for c={2}, i={3}",
-                        string.Join(", ", v), result, c, i);
-                    throw new Exception(msg);
-                }
-                return result;
-            }
-            else
-                return LogP(b, c, stillSet, i + 1);
-        }
-
-        public double LogP2(BitArray b, int c)
+        /// <param name="b">The set bit pattern</param>
+        /// <param name="c">The generating number of values</param>
+        /// <returns>The logarithm of the probability that bit-pattern b
+        /// arose given c unique items</returns>
+        public double LogP(BitArray b, int c)
         {
             int stillSet = Enumerable.Range(0, b.Length).Where(i => b[i]).Count();
             double[] pforward = new double[c + 1];
@@ -84,20 +54,19 @@ namespace Counting
 
             for (int i = b.Length - 1; i >= 0; --i)
             {
-                if (b[i])
+                if (!b[i])
+                    continue;
+                pcurrent[0] = Double.NegativeInfinity;
+                for (int cc = 1; cc <= c; ++cc)
                 {
-                    pcurrent[0] = Double.NegativeInfinity;
-                    for (int cc = 1; cc <= c; ++cc)
-                    {
-                        // We can use somewhere between [1, cc] items.
-                        for (int j = 1; j <= cc; ++j)
-                            work[j - 1] = LogUtils.LogNcK(cc, j) + j * _logProbs[i] + pforward[cc - j];
-                        pcurrent[cc] = LogUtils.LogSumExp(work.Take(cc));
-                    }
-                    var ptemp = pcurrent;
-                    pcurrent = pforward;
-                    pforward = ptemp;
+                    // We can use somewhere between [1, cc] items. Sum over each possible value j.
+                    for (int j = 1; j <= cc; ++j)
+                        work[j - 1] = LogUtils.LogNcK(cc, j) + j * _logProbs[i] + pforward[cc - j];
+                    pcurrent[cc] = LogUtils.LogSumExp(work.Take(cc));
                 }
+                var ptemp = pcurrent;
+                pcurrent = pforward;
+                pforward = ptemp;
             }
             return pforward[c];
         }

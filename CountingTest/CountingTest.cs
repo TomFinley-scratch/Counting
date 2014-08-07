@@ -43,7 +43,7 @@ namespace CountingTest
             for (int i = 0; i < trials; ++i)
             {
                 BitArray sample = counter.Sample(count, rgen);
-                double calcProb = Math.Exp(counter.LogP2(sample, count));
+                double calcProb = Math.Exp(counter.LogP(sample, count));
 
                 const int resample = 100000;
                 int resampleEquals = 0;
